@@ -61,7 +61,7 @@ const ImageGallery = () => {
           // Test which images exist
           for (let i = 0; i < commonNames.length; i++) {
             const filename = commonNames[i];
-            const imagePath = `public/images/${filename}`;
+            const imagePath = `public/database/${filename}`;
             
             try {
               const response = await fetch(imagePath, { method: 'HEAD' });
