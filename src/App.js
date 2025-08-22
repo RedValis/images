@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Download, ExternalLink, FileImage, Grid, List } from 'lucide-react';
+import { Search, Download, ExternalLink, FileImage, Grid, List, ChevronLeft, ChevronRight } from 'lucide-react';
 
 const ImageGallery = () => {
   const [images, setImages] = useState([]);
@@ -8,6 +8,7 @@ const ImageGallery = () => {
   const [selectedImage, setSelectedImage] = useState(null);
   const [filteredImages, setFilteredImages] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [isTransitioning, setIsTransitioning] = useState(false);
 
   const getImageTitle = (filename) => {
     return filename
@@ -16,7 +17,6 @@ const ImageGallery = () => {
       .replace(/\b\w/g, l => l.toUpperCase()); 
   };
 
-  // Function to get metadata
   const getImageInfo = async (imagePath) => {
     try {
       const response = await fetch(imagePath, { method: 'HEAD' });
@@ -45,12 +45,11 @@ const ImageGallery = () => {
         
 
         const imageFilenames = [
-          // Add your image filenames here, for example:
-          // 'photo1.jpg',
-          // 'sunset.png',
-          // 'landscape.jpeg',
-          // 'portrait.webp',
-                  ];
+              'anicat.png',
+              'anisigned.png',
+              'Catmessiahniko.jpg',
+              'gobbler_valis_and_arc.jpg',
+        ];
 
         if (imageFilenames.length === 0) {
           const commonNames = [
@@ -78,6 +77,7 @@ const ImageGallery = () => {
                 });
               }
             } catch (error) {
+              // Image doesn't exist, skip it
               continue;
             }
           }
@@ -112,6 +112,7 @@ const ImageGallery = () => {
     loadImages();
   }, []);
 
+  // Filter images based on search
   useEffect(() => {
     if (searchTerm) {
       const filtered = images.filter(img => 
@@ -131,6 +132,45 @@ const ImageGallery = () => {
   const closeModal = () => {
     setSelectedImage(null);
   };
+
+  const navigateImage = (direction) => {
+    if (!selectedImage || isTransitioning) return;
+    
+    setIsTransitioning(true);
+    
+    const currentIndex = filteredImages.findIndex(img => img.id === selectedImage.id);
+    let nextIndex;
+    
+    if (direction === 'next') {
+      nextIndex = currentIndex === filteredImages.length - 1 ? 0 : currentIndex + 1;
+    } else {
+      nextIndex = currentIndex === 0 ? filteredImages.length - 1 : currentIndex - 1;
+    }
+    
+    setTimeout(() => {
+      setSelectedImage(filteredImages[nextIndex]);
+      setTimeout(() => {
+        setIsTransitioning(false);
+      }, 50);
+    }, 150);
+  };
+
+  useEffect(() => {
+    const handleKeyPress = (e) => {
+      if (!selectedImage) return;
+      
+      if (e.key === 'ArrowRight') {
+        navigateImage('next');
+      } else if (e.key === 'ArrowLeft') {
+        navigateImage('prev');
+      } else if (e.key === 'Escape') {
+        closeModal();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, [selectedImage, filteredImages, isTransitioning]);
 
   const downloadImage = (src, title) => {
     const link = document.createElement('a');
@@ -292,21 +332,50 @@ const ImageGallery = () => {
 
       {/* Modal */}
       {selectedImage && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-lg">
-          <div className="relative max-w-5xl w-full max-h-[90vh] bg-white/5 backdrop-blur-lg rounded-2xl border border-white/20 overflow-hidden">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-lg">
+          {/* Navigation Arrows - Outside Modal */}
+          {filteredImages.length > 1 && (
+            <>
+              {/* Left Arrow */}
+              <button
+                onClick={() => navigateImage('prev')}
+                disabled={isTransitioning}
+                className="fixed left-4 sm:left-8 top-1/2 transform -translate-y-1/2 z-[70] w-12 h-12 sm:w-14 sm:h-14 bg-black/80 hover:bg-black/90 disabled:bg-black/50 disabled:cursor-not-allowed text-white rounded-full flex items-center justify-center transition-all duration-200 group border border-white/20 hover:border-purple-500/50 hover:scale-105"
+              >
+                <ChevronLeft className="w-6 h-6 sm:w-7 sm:h-7 group-hover:scale-110 transition-transform" />
+              </button>
+
+              {/* Right Arrow */}
+              <button
+                onClick={() => navigateImage('next')}
+                disabled={isTransitioning}
+                className="fixed right-4 sm:right-8 top-1/2 transform -translate-y-1/2 z-[70] w-12 h-12 sm:w-14 sm:h-14 bg-black/80 hover:bg-black/90 disabled:bg-black/50 disabled:cursor-not-allowed text-white rounded-full flex items-center justify-center transition-all duration-200 group border border-white/20 hover:border-purple-500/50 hover:scale-105"
+              >
+                <ChevronRight className="w-6 h-6 sm:w-7 sm:h-7 group-hover:scale-110 transition-transform" />
+              </button>
+            </>
+          )}
+          
+          <div className={`relative max-w-5xl w-full max-h-[90vh] bg-white/5 backdrop-blur-lg rounded-2xl border border-white/20 overflow-hidden mx-4 transition-all duration-300 ${isTransitioning ? 'opacity-70 scale-95' : 'opacity-100 scale-100'} z-[60]`}>
+            {/* Close Button */}
             <button
               onClick={closeModal}
               className="absolute top-4 right-4 z-10 w-10 h-10 bg-black/50 hover:bg-black/70 text-white rounded-full flex items-center justify-center transition-colors text-xl"
             >
               ×
             </button>
+
+            {/* Image Counter */}
+            <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-10 px-3 py-1 bg-black/50 text-white text-sm rounded-full">
+              {filteredImages.findIndex(img => img.id === selectedImage.id) + 1} / {filteredImages.length}
+            </div>
             
             <div className="flex flex-col lg:flex-row">
               <div className="flex-grow flex items-center justify-center p-4">
                 <img
                   src={selectedImage.src}
                   alt={selectedImage.alt}
-                  className="max-w-full max-h-[70vh] object-contain rounded-lg"
+                  className={`max-w-full max-h-[70vh] object-contain rounded-lg transition-all duration-300 ${isTransitioning ? 'opacity-0 scale-95' : 'opacity-100 scale-100'}`}
                 />
               </div>
               
@@ -347,6 +416,15 @@ const ImageGallery = () => {
                       Open
                     </button>
                   </div>
+
+                  {/* Navigation Hint */}
+                  {filteredImages.length > 1 && (
+                    <div className="pt-4 border-t border-white/10">
+                      <p className="text-gray-400 text-xs text-center">
+                        Use ← → arrow keys or click arrows to navigate
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
